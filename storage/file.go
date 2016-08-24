@@ -21,7 +21,7 @@ func pathForFileShare(name string) string {
 //
 // See https://msdn.microsoft.com/en-us/library/azure/dn167008.aspx
 func (f FileServiceClient) CreateShare(name string) error {
-	resp, err := f.createShare(name)
+	resp, err := f.createShare(name, "")
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,8 @@ func (f FileServiceClient) CreateShare(name string) error {
 // container already exists.
 //
 // See https://msdn.microsoft.com/en-us/library/azure/dn167008.aspx
-func (f FileServiceClient) CreateShareIfNotExists(name string) (bool, error) {
-	resp, err := f.createShare(name)
+func (f FileServiceClient) CreateShareIfNotExists(name, quota string) (bool, error) {
+	resp, err := f.createShare(name, quota)
 	if resp != nil {
 		defer resp.body.Close()
 		if resp.statusCode == http.StatusCreated || resp.statusCode == http.StatusConflict {
@@ -46,12 +46,15 @@ func (f FileServiceClient) CreateShareIfNotExists(name string) (bool, error) {
 }
 
 // CreateShare creates a Azure File Share and returns its response
-func (f FileServiceClient) createShare(name string) (*storageResponse, error) {
+func (f FileServiceClient) createShare(name, quota string) (*storageResponse, error) {
 	if err := f.checkForStorageEmulator(); err != nil {
 		return nil, err
 	}
 	uri := f.client.getEndpoint(fileServiceName, pathForFileShare(name), url.Values{"restype": {"share"}})
 	headers := f.client.getStandardHeaders()
+	if quota != "" {
+		headers["x-ms-share-quota"] = quota
+	}
 	return f.client.exec("PUT", uri, headers, nil)
 }
 
